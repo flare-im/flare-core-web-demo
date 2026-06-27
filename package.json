@@ -1,0 +1,39 @@
+{
+  "name": "flare-core-web-app",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run dev:web",
+    "dev:web": "vite --host 0.0.0.0",
+    "build": "npm run build:web",
+    "build:web": "vue-tsc --noEmit && vite build",
+    "package:web": "npm run build:web",
+    "preview": "vite preview --host 0.0.0.0",
+    "preview:web": "vite preview --host 0.0.0.0",
+    "verify:architecture": "node ../../scripts/generate-design-tokens.mjs --check && node ../../packages/flare-core-typescript-sdk/scripts/verify-no-client-shadow-views.mjs",
+    "test": "node ../../scripts/generate-design-tokens.mjs --check && node ../../packages/flare-core-typescript-sdk/scripts/verify-no-client-shadow-views.mjs && vitest run",
+    "test:e2e": "playwright test",
+    "typecheck": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "@vicons/ionicons5": "^0.13.0",
+    "flare-core-typescript-sdk": "file:../../packages/flare-core-typescript-sdk",
+    "flare-core-vue-im-ui": "file:../../packages/flare-core-vue-im-ui",
+    "markdown-it": "^14.2.0",
+    "naive-ui": "^2.44.1",
+    "protobufjs": "^8.5.0",
+    "vue": "^3.5.13",
+    "vue-router": "^4.6.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "^22.10.2",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "typescript": "~5.6.2",
+    "vite": "^6.0.3",
+    "vitest": "^3.2.6",
+    "vue-tsc": "^2.1.10"
+  }
+}

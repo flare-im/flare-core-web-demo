@@ -1,0 +1,40 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "jsx": "preserve",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["vite/client", "node"],
+    "paths": {
+      "@vicons/ionicons5": ["../../packages/flare-core-vue-im-ui/node_modules/@vicons/ionicons5"],
+      "flare-core-typescript-sdk/web": ["../../packages/flare-core-typescript-sdk/src/adapters/web/index.ts"],
+      "flare-core-typescript-sdk/*": ["../../packages/flare-core-typescript-sdk/src/*"],
+      "flare-core-typescript-sdk": ["../../packages/flare-core-typescript-sdk/src/index.ts"],
+      "flare-core-vue-im-ui": ["../../packages/flare-core-vue-im-ui/src/index.ts"],
+      "flare-core-vue-im-ui/sdk-lab": ["../../packages/flare-core-vue-im-ui/src/app/components/FlareSdkLabPanel.vue"],
+      "flare-core-vue-im-ui/app": ["../../packages/flare-core-vue-im-ui/src/app/index.ts"],
+      "flare-core-vue-im-ui/app/components/*": ["../../packages/flare-core-vue-im-ui/src/app/components/*"],
+      "flare-core-vue-im-ui/app/style.css": ["../../packages/flare-core-vue-im-ui/src/app/styles/index.css"],
+      "flare-core-vue-im-ui/style.css": ["../../packages/flare-core-vue-im-ui/src/design-system/styles/index.css"],
+      "flare-core-vue-im-ui/theme": ["../../packages/flare-core-vue-im-ui/src/design-system/theme/index.ts"],
+      "flare-core-vue-im-ui/i18n": ["../../packages/flare-core-vue-im-ui/src/shared/i18n/index.ts"],
+      "flare-core-vue-im-ui/contracts": ["../../packages/flare-core-vue-im-ui/src/shared/contracts/index.ts"],
+      "flare-core-vue-im-ui/components": ["../../packages/flare-core-vue-im-ui/src/components/index.ts"],
+      "flare-core-vue-im-ui/composables": ["../../packages/flare-core-vue-im-ui/src/composables/index.ts"],
+      "flare-core-vue-im-ui/utils": ["../../packages/flare-core-vue-im-ui/src/utils/index.ts"],
+      "flare-core-vue-im-ui/*": ["../../packages/flare-core-vue-im-ui/src/*"],
+      "markdown-it": ["../../packages/flare-core-vue-im-ui/node_modules/@types/markdown-it/index.d.ts"],
+      "naive-ui": ["../../packages/flare-core-vue-im-ui/node_modules/naive-ui"],
+      "vue": ["../../packages/flare-core-vue-im-ui/node_modules/vue"],
+      "vue-router": ["../../packages/flare-core-vue-im-ui/node_modules/vue-router"]
+    }
+  },
+  "include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts"]
+}
