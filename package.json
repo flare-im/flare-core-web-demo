@@ -7,7 +7,7 @@
     "dev": "npm run dev:web",
     "dev:web": "vite --host 0.0.0.0",
     "build": "npm run build:web",
-    "build:web": "vue-tsc --noEmit && vite build",
+    "build:web": "vue-tsc --noEmit && vite build && node ../../scripts/check-vite-bundle-budget.mjs dist 500",
     "package:web": "npm run build:web",
     "preview": "vite preview --host 0.0.0.0",
     "preview:web": "vite preview --host 0.0.0.0",
@@ -22,7 +22,7 @@
     "flare-core-vue-im-ui": "file:../../packages/flare-core-vue-im-ui",
     "markdown-it": "^14.2.0",
     "naive-ui": "^2.44.1",
-    "protobufjs": "^8.5.0",
+    "protobufjs": "^8.6.5",
     "vue": "^3.5.13",
     "vue-router": "^4.6.4"
   },

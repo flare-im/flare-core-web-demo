@@ -68,7 +68,7 @@ import {
   type MessagePinScope,
 } from "flare-core-vue-im-ui/app";
 
-type MessageIdentity = Pick<Message, "serverId" | "clientMsgId" | "messageType" | "content">;
+type MessageIdentity = Pick<Message, "serverId" | "clientMsgId" | "senderId" | "messageType" | "content">;
 type MediaDownloadAction = "download" | "openFolder";
 type MediaDownloadState = "notDownloaded" | "downloading" | "downloaded";
 type MessageMediaDownloadUiState = "idle" | "downloading" | "downloaded" | "openFolder";
@@ -85,9 +85,15 @@ type ComposerMediaSource = {
   mimeType: string;
   fileSize: number;
 };
-const COMPOSER_SEND_TIMEOUT_MS = 16_000;
+type ComposerMentionCandidate = {
+  userId: string;
+  label?: string;
+  avatarUrl?: string;
+};
+const COMPOSER_SEND_TIMEOUT_MS = 35_000;
 const DRAFT_IDLE_DELAY_MS = 5_000;
 const DRAFT_CLEAR_DELAY_MS = 1_200;
+const PEER_PRESENCE_REFRESH_DELAY_MS = 5_000;
 const MESSAGE_LOCATE_MAX_OLDER_LOADS = 48;
 
 const workbenchUi = useFlareWorkbenchUi();
@@ -116,9 +122,11 @@ const handledVoicePayloads = new WeakSet<VoiceRecordingPayload>();
 let typingTimer: number | undefined;
 let scrollBottomFrame: number | undefined;
 let scrollBottomTimer: number | undefined;
+let peerPresenceRefreshTimer: number | undefined;
 let composerResizeObserver: ResizeObserver | null = null;
 let composerVoiceDomTarget: HTMLElement | null = null;
 let skipNextComposerTextWatch = false;
+let composerUserEditVersion = 0;
 const draftClearTimers = new Map<string, number>();
 
 const draftScheduler = new DraftIdleScheduler(DRAFT_IDLE_DELAY_MS, (conversationId, draft) =>
@@ -304,6 +312,30 @@ function resolvePeerUserId(): string {
   return peer?.userId?.trim() || item.channelId?.trim() || "";
 }
 
+const composerMentionCandidates = computed<ComposerMentionCandidate[]>(() => {
+  const item = sdk.activeConversation.value;
+  if (!item) return [];
+  const currentUserId = (sdk.currentUserId.value || sdk.form.userId).trim();
+  const candidates = new Map<string, ComposerMentionCandidate>();
+  const add = (userId?: string, label?: string): void => {
+    const id = userId?.trim();
+    if (!id || id === currentUserId || candidates.has(id)) return;
+    const display = label?.trim() || id;
+    candidates.set(id, { userId: id, label: display });
+  };
+
+  for (const participant of item.participants ?? []) add(participant.userId, participant.nickname);
+  for (const participant of item.memberPreview ?? []) add(participant.userId, participant.nickname);
+  if (item.conversationType === "single") add(resolvePeerUserId(), activeTitle.value);
+
+  const channel = item.channelId?.trim() ?? "";
+  if (channel.startsWith("users:")) {
+    for (const userId of channel.slice("users:".length).split(/[,\s，、;；|]+/)) add(userId, userId);
+  }
+
+  return [...candidates.values()].slice(0, 64);
+});
+
 function mapPresenceStatus(raw: string): "online" | "offline" | "busy" {
   const normalized = raw.toLowerCase();
   if (normalized.includes("busy") || normalized.includes("dnd")) return "busy";
@@ -348,9 +380,29 @@ function handleTimelineAtBottomChange(atBottom: boolean): void {
   sdk.setActiveTimelineAtBottom(atBottom);
 }
 
+function clearPeerPresenceRefreshTimer(): void {
+  if (peerPresenceRefreshTimer === undefined) return;
+  window.clearTimeout(peerPresenceRefreshTimer);
+  peerPresenceRefreshTimer = undefined;
+}
+
+function schedulePeerPresenceRefresh(conversationId: string, peerUserId: string): void {
+  clearPeerPresenceRefreshTimer();
+  peerPresenceRefreshTimer = window.setTimeout(() => {
+    peerPresenceRefreshTimer = undefined;
+    if (sdk.activeConversationId.value !== conversationId) return;
+    void sdk.refreshActivePeerPresence(peerUserId).then((status) => {
+      if (sdk.activeConversationId.value === conversationId) {
+        peerPresenceStatus.value = mapPresenceStatus(status);
+      }
+    });
+  }, PEER_PRESENCE_REFRESH_DELAY_MS);
+}
+
 watch(
   () => sdk.activeConversationId.value,
   async (conversationId, previousConversationId) => {
+    clearPeerPresenceRefreshTimer();
     if (previousConversationId) {
       await flushComposerDraftNow(previousConversationId, editingMessageId.value ? "" : composerText.value);
     } else {
@@ -376,12 +428,15 @@ watch(
     exitMultiSelect();
     const peerUserId = resolvePeerUserId();
     if (peerUserId) {
-      peerPresenceStatus.value = mapPresenceStatus(await sdk.refreshActivePeerPresence(peerUserId));
+      peerPresenceStatus.value = mapPresenceStatus(sdk.peerPresence.value[peerUserId] ?? "offline");
     } else {
       peerPresenceStatus.value = "offline";
     }
     await sdk.enterActiveConversation("chat_enter");
     await scrollChatToBottomAfterRender();
+    if (peerUserId) {
+      schedulePeerPresenceRefresh(conversationId, peerUserId);
+    }
   },
   { immediate: true },
 );
@@ -426,6 +481,7 @@ watch(composerText, (draft) => {
     skipNextComposerTextWatch = false;
     return;
   }
+  composerUserEditVersion += 1;
   if (editingMessageId.value) return;
   scheduleComposerDraft(draft);
   if (!isConnected.value) return;
@@ -483,7 +539,7 @@ async function locateMessage(messageId: string): Promise<void> {
 }
 
 function messageId(message: MessageIdentity): string {
-  return message.clientMsgId || message.serverId;
+  return message.serverId || message.clientMsgId;
 }
 
 function quotedMessageContent(message: MessageIdentity): MessageContent {
@@ -617,7 +673,10 @@ async function sendText(): Promise<void> {
 
   prepareComposerSend();
   sending.value = true;
+  const composerVersionAtSubmit = composerUserEditVersion;
   try {
+    setComposerTextSilently("");
+    clearComposerDraft();
     let task: Promise<void>;
     if (editingMessageId.value) {
       task = sdk.editMessageText(editingMessageId.value, text);
@@ -625,6 +684,7 @@ async function sendText(): Promise<void> {
       task = sdk.buildAndSendMessage("create_quote", {
         text,
         quotedMessageId: messageId(replyMessage.value),
+        quotedSenderId: replyMessage.value.senderId,
         quotedTextPreview: getMessageText(replyMessage.value),
         quotedContent: quotedMessageContent(replyMessage.value),
       });
@@ -641,8 +701,10 @@ async function sendText(): Promise<void> {
     await withComposerSendDeadline(task);
     editingMessageId.value = "";
     replyMessageId.value = "";
-    setComposerTextSilently("");
-    clearComposerDraft();
+    if (composerUserEditVersion === composerVersionAtSubmit && !composerText.value.trim()) {
+      setComposerTextSilently("");
+      clearComposerDraft();
+    }
     composerPanel.value = null;
     await nextTick();
     await messageListRef.value?.scrollToBottom();
@@ -1452,6 +1514,7 @@ onBeforeUnmount(() => {
     window.clearTimeout(typingTimer);
     typingTimer = undefined;
   }
+  clearPeerPresenceRefreshTimer();
   composerResizeObserver?.disconnect();
   composerResizeObserver = null;
   operations.dispose();
@@ -1726,6 +1789,7 @@ async function focusPinnedMessage(messageId: string): Promise<void> {
         :status-hint-pulse="composerStatusPulse"
         :placeholder="composerPlaceholder"
         :target-name="activeTitle"
+        :mention-candidates="composerMentionCandidates"
         :active-panel="composerPanel"
         :rich-mode="composerRichMode"
         :media-panel-open="mediaPanelOpen"
