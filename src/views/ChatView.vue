@@ -24,6 +24,7 @@ import {
   FlareComposerEmojiStickerPanel as ComposerEmojiStickerPanel,
   FlareMessageList as MessageList,
   FlarePinnedMessageBar as PinnedMessageBar,
+  FlareStatusBanner,
 } from "flare-core-vue-im-ui/components";
 import {
   formatEmojiPackToken,
@@ -290,6 +291,21 @@ const chatEmptyState = computed(() => {
     error: false,
   };
 });
+
+type FlareBannerTone = "info" | "success" | "warning" | "danger" | "neutral";
+function statusTone(tone: string | undefined): FlareBannerTone {
+  switch (tone) {
+    case "success":
+    case "warning":
+    case "danger":
+    case "neutral":
+      return tone;
+    case "error":
+      return "danger";
+    default:
+      return "info";
+  }
+}
 
 const runtimeStatus = computed(() => {
   const state = sdk.connectionState.value;
@@ -1635,26 +1651,22 @@ async function focusPinnedMessage(messageId: string): Promise<void> {
       </template>
     </ChatConversationHeader>
 
-    <section
+    <FlareStatusBanner
       v-if="runtimeStatus.show"
-      class="chat-connection-banner"
-      :class="`chat-connection-banner--${runtimeStatus.tone}`"
-      role="status"
-    >
-      <span
-        class="chat-connection-banner__dot"
-        :class="{ 'chat-connection-banner__dot--pulse': runtimeStatus.pulse }"
-      />
-      <span>{{ runtimeStatus.title }} · {{ runtimeStatus.detail }}</span>
-    </section>
+      class="chat-status-banner"
+      :text="`${runtimeStatus.title} · ${runtimeStatus.detail}`"
+      :tone="statusTone(runtimeStatus.tone)"
+      :pulse="runtimeStatus.pulse"
+    />
 
-    <section v-if="sdk.messageSyncError.value && sdk.messages.value.length" class="chat-message-sync-banner" role="alert">
-      <strong>{{ t("chat.messageSyncFailed") }}</strong>
-      <span>{{ sdk.messageSyncError.value }}</span>
-      <button type="button" class="chat-message-sync-banner__retry" @click="syncEmptyChat">
-        {{ t("chat.syncRetry") }}
-      </button>
-    </section>
+    <FlareStatusBanner
+      v-if="sdk.messageSyncError.value && sdk.messages.value.length"
+      class="chat-status-banner"
+      tone="danger"
+      :text="`${t('chat.messageSyncFailed')} · ${sdk.messageSyncError.value}`"
+      :action-text="t('chat.syncRetry')"
+      @action="syncEmptyChat"
+    />
 
     <nav
       v-if="showContentTabs"

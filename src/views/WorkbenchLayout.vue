@@ -32,7 +32,7 @@ import {
   useMessage,
 } from "naive-ui";
 import { useRoute, useRouter } from "vue-router";
-import { FlareStartConversationDialog, FlareWorkbenchShell } from "flare-core-vue-im-ui/components";
+import { FlareFilterTabs, FlareStartConversationDialog, FlareWorkbenchShell } from "flare-core-vue-im-ui/components";
 import type { FlareWorkbenchShellMode } from "flare-core-vue-im-ui/contracts";
 import { provideFlareWorkbenchUi } from "flare-core-vue-im-ui/composables";
 import { useFlareTheme, type FlareThemeMode, type FlareThemeVariant } from "flare-core-vue-im-ui/theme";
@@ -521,20 +521,12 @@ async function buildFromAction(op: string): Promise<void> {
           </n-button>
         </div>
 
-        <div class="chat-search-panel__filters" role="tablist" aria-label="消息搜索类型">
-          <button
-            v-for="option in chatSearchKindOptions"
-            :key="option.value"
-            type="button"
-            role="tab"
-            :aria-selected="chatSearchKind === option.value"
-            :class="{ 'is-active': chatSearchKind === option.value }"
-            @click="selectChatSearchKind(option.value)"
-          >
-            <n-icon :component="option.icon" />
-            {{ option.label }}
-          </button>
-        </div>
+        <FlareFilterTabs
+          class="chat-search-panel__filters"
+          :options="chatSearchKindOptions"
+          :active="chatSearchKind"
+          @change="(v: string) => selectChatSearchKind(v as ChatSearchKindValue)"
+        />
 
         <div v-if="chatSearchSearched && !chatSearchError" class="chat-search-panel__meta">
           <span>{{ chatSearchLastKindLabel }}</span>

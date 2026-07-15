@@ -4,7 +4,23 @@ import { AddOutline, ChatbubbleEllipsesOutline, CloseOutline, EllipsisHorizontal
 import { NButton, NIcon, NInput } from "naive-ui";
 import { useRouter } from "vue-router";
 import type { FlareConversationAction } from "flare-core-vue-im-ui/contracts";
+import { FlareFilterTabs, FlareStatusBanner } from "flare-core-vue-im-ui/components";
 import { useFlareWorkbenchUi } from "flare-core-vue-im-ui/composables";
+
+type FlareBannerTone = "info" | "success" | "warning" | "danger" | "neutral";
+function statusTone(tone: string | undefined): FlareBannerTone {
+  switch (tone) {
+    case "success":
+    case "warning":
+    case "danger":
+    case "neutral":
+      return tone;
+    case "error":
+      return "danger";
+    default:
+      return "info";
+  }
+}
 import {
   ConversationList,
   ConversationListItem,
@@ -93,20 +109,12 @@ async function runConversationAction(action: FlareConversationAction, id: string
       </div>
     </header>
 
-    <div class="conversation-filter-row" role="tablist" aria-label="Conversation filters">
-      <button
-        v-for="option in filterOptions"
-        :key="option.value"
-        type="button"
-        class="conversation-filter"
-        :class="{ 'conversation-filter--active': activeFilter === option.value }"
-        role="tab"
-        :aria-selected="activeFilter === option.value"
-        @click="onFilterChange(option.value)"
-      >
-        {{ option.label }}
-      </button>
-    </div>
+    <FlareFilterTabs
+      class="conversation-filter-tabs"
+      :options="filterOptions"
+      :active="activeFilter"
+      @change="(v: string) => onFilterChange(v as ConversationFilter)"
+    />
 
     <div v-if="conversationSearchOpen" class="flutter-search">
       <n-input
@@ -120,11 +128,13 @@ async function runConversationAction(action: FlareConversationAction, id: string
       </n-input>
     </div>
 
-    <section v-if="runtimeStatus.show" class="runtime-status-banner" :class="`runtime-status-banner--${runtimeStatus.tone}`">
-      <span class="runtime-status-dot" :class="{ 'runtime-status-dot--busy': runtimeStatus.busy }" />
-      <strong>{{ runtimeStatus.title }}</strong>
-      <span>{{ runtimeStatus.detail }}</span>
-    </section>
+    <FlareStatusBanner
+      v-if="runtimeStatus.show"
+      class="runtime-status-tabs-banner"
+      :text="[runtimeStatus.title, runtimeStatus.detail].filter(Boolean).join(' · ')"
+      :tone="statusTone(runtimeStatus.tone)"
+      :pulse="runtimeStatus.busy"
+    />
 
     <div class="flutter-divider" />
 

@@ -7,7 +7,7 @@ import { defineConfig } from "vitest/config";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../../..");
 const typeScriptSdkRoot = path.resolve(__dirname, "../../packages/flare-core-typescript-sdk/src");
-const vueImUiRoot = path.resolve(__dirname, "../../packages/flare-core-vue-im-ui/src");
+const vueImUiRoot = path.resolve(__dirname, "../../../flare-im-design/vue-im-ui/src");
 
 export default defineConfig({
   plugins: [vue()],
