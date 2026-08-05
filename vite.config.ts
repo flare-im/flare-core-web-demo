@@ -2,7 +2,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import vue from "@vitejs/plugin-vue";
-import { createFlareCoreWebAppViteConfig } from "flare-core-typescript-sdk/devtools/vite";
+import { createFlareCoreWebAppViteConfig } from "@flare-im/sdk/devtools/vite";
 import { defineConfig, loadEnv } from "vite";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -16,7 +16,7 @@ export default createFlareCoreWebAppViteConfig({
   vuePlugin: vue,
   extraAliases: [
     {
-      find: "flare-core-typescript-sdk/transport",
+      find: "@flare-im/sdk/transport",
       replacement: path.join(typeScriptSdkRoot, "adapters/_shared/transportProfile.ts"),
     },
   ],

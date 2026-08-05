@@ -3,9 +3,9 @@ import { computed } from "vue";
 import { AddOutline, ChatbubbleEllipsesOutline, CloseOutline, EllipsisHorizontalOutline, SearchOutline } from "@vicons/ionicons5";
 import { NButton, NIcon, NInput } from "naive-ui";
 import { useRouter } from "vue-router";
-import type { FlareConversationAction } from "flare-core-vue-im-ui/contracts";
-import { FlareFilterTabs, FlareStatusBanner } from "flare-core-vue-im-ui/components";
-import { useFlareWorkbenchUi } from "flare-core-vue-im-ui/composables";
+import type { FlareConversationAction } from "@flare-im/vue-ui/contracts";
+import { FlareFilterTabs, FlareStatusBanner } from "@flare-im/vue-ui/components";
+import { useFlareWorkbenchUi } from "@flare-im/vue-ui/composables";
 
 type FlareBannerTone = "info" | "success" | "warning" | "danger" | "neutral";
 function statusTone(tone: string | undefined): FlareBannerTone {
@@ -26,8 +26,8 @@ import {
   ConversationListItem,
   useConversationListModel,
   useFlareI18n,
-} from "flare-core-vue-im-ui/app";
-import type { ConversationFilter } from "flare-core-vue-im-ui/composables";
+} from "@flare-im/vue-ui/app";
+import type { ConversationFilter } from "@flare-im/vue-ui/composables";
 
 const router = useRouter();
 const workbenchUi = useFlareWorkbenchUi();

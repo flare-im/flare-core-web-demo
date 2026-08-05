@@ -1,13 +1,13 @@
 # flare-core-web-app
 
-Vue 3 + TypeScript + Naive UI production-shaped workbench for `flare-core-typescript-sdk` and **real** `flare-im-core-sdk` through browser WASM (`bindings/wasm` + `IMClient`).
+Vue 3 + TypeScript + Naive UI production-shaped workbench for `@flare-im/sdk` and **real** `flare-im-core-sdk` through browser WASM (`bindings/wasm` + `IMClient`).
 
 Peer reference: `examples/flare-core-flutter-app` (interaction parity), `docs/client-api-reference.md`, `sdk-spec/shared/message_build_catalog.json`.
 
 ## Stack
 
 - Vue 3 Composition API, Vue Router (hash), Vite, Naive UI
-- **Shared UI**: `packages/flare-core-vue-im-ui`
+- **Shared UI**: `packages/@flare-im/vue-ui`
 - SDK entry: `createProductionAppClient` + `WebFlareImClient`
 - Runtime: `platform=web`, `runtime=browser-wasm`
 - Browser bridge: `WebProductionBridge` → `flare-im-core-sdk/bindings/wasm` with IndexedDB-backed SDK storage host
@@ -40,9 +40,9 @@ Default Vite URL: `http://localhost:1430`
 | Layer | Path |
 |-------|------|
 | host app | `src/main.ts`, `src/App.vue`, `src/router.ts`, and `src/views/*` own mounting, route views, guards, and media proxy config |
-| shared UI | `flare-core-vue-im-ui/src/app/components/*` for reusable workbench components, SDK context helpers, and runtime adapter hooks |
-| design system | `flare-core-vue-im-ui/src/design-system/*` for foundations, provider, theme, generated tokens |
-| shared contracts | `flare-core-vue-im-ui/src/shared/*` for contracts, i18n, config, constants |
+| shared UI | `@flare-im/vue-ui/src/app/components/*` for reusable workbench components, SDK context helpers, and runtime adapter hooks |
+| design system | `@flare-im/vue-ui/src/design-system/*` for foundations, provider, theme, generated tokens |
+| shared contracts | `@flare-im/vue-ui/src/shared/*` for contracts, i18n, config, constants |
 
 Workbench components use `useFlareCoreClient`; host route views should compose those components instead of duplicating init/login/sync orchestration.
 

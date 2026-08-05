@@ -15,8 +15,8 @@ import {
 } from "@vicons/ionicons5";
 import { NButton, NIcon, useMessage } from "naive-ui";
 import { onBeforeRouteLeave, useRouter } from "vue-router";
-import { MessageContentType, type Message, type MessageContent } from "flare-core-typescript-sdk/web";
-import { uploadMediaInput } from "flare-core-typescript-sdk/media";
+import { MessageContentType, type Message, type MessageContent } from "@flare-im/sdk/web";
+import { uploadMediaInput } from "@flare-im/sdk/media";
 import {
   FlareChatHeader as ChatConversationHeader,
   FlareChatHeaderIdentity as ChatConversationHeaderIdentity,
@@ -25,7 +25,7 @@ import {
   FlareMessageList as MessageList,
   FlarePinnedMessageBar as PinnedMessageBar,
   FlareStatusBanner,
-} from "flare-core-vue-im-ui/components";
+} from "@flare-im/vue-ui/components";
 import {
   formatEmojiPackToken,
   getMessageText,
@@ -36,9 +36,9 @@ import {
   resolveLoneEmojiPackKey,
   withTimeout,
   type MessageMediaDownloadSource,
-} from "flare-core-vue-im-ui/utils";
-import type { MessageMenuConfig } from "flare-core-vue-im-ui/utils";
-import { useFlareWorkbenchUi } from "flare-core-vue-im-ui/composables";
+} from "@flare-im/vue-ui/utils";
+import type { MessageMenuConfig } from "@flare-im/vue-ui/utils";
+import { useFlareWorkbenchUi } from "@flare-im/vue-ui/composables";
 import {
   canRevealDownloadedMedia,
   conversationTitle,
@@ -67,7 +67,7 @@ import {
   type MediaComposerPreviewItem,
   type MessageOperationSdk,
   type MessagePinScope,
-} from "flare-core-vue-im-ui/app";
+} from "@flare-im/vue-ui/app";
 
 type MessageIdentity = Pick<Message, "serverId" | "clientMsgId" | "senderId" | "messageType" | "content">;
 type MediaDownloadAction = "download" | "openFolder";
@@ -153,7 +153,7 @@ const messageListBottomInset = computed(() =>
 );
 const peerPresenceStatus = ref<"online" | "offline" | "busy">("offline");
 const messageInteractionSource = computed(() => sdk.messages.value as unknown as readonly Message[]);
-const forwardConversationSource = computed(() => sdk.conversations.value as unknown as readonly import("flare-core-typescript-sdk/web").Conversation[]);
+const forwardConversationSource = computed(() => sdk.conversations.value as unknown as readonly import("@flare-im/sdk/web").Conversation[]);
 const interactions = useMessageInteractionState(messageInteractionSource);
 const operations = createMessageOperationAdapter(sdk as unknown as MessageOperationSdk);
 const multiSelectMode = interactions.multiSelectMode;
