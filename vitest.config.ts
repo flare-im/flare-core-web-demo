@@ -41,6 +41,11 @@ export default defineConfig({
         find: "@flare-im/vue-ui/utils",
         replacement: path.join(vueImUiRoot, "utils/index.ts"),
       },
+      // 更具体的子路径要排在 `/composables` 前面（字符串 find 是前缀匹配）。
+      {
+        find: "@flare-im/vue-ui/composables/sdk",
+        replacement: path.join(vueImUiRoot, "composables/sdk.ts"),
+      },
       {
         find: "@flare-im/vue-ui/composables",
         replacement: path.join(vueImUiRoot, "composables/index.ts"),

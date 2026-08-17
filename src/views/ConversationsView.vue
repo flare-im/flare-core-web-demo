@@ -27,7 +27,7 @@ import {
   useConversationListModel,
   useFlareI18n,
 } from "@flare-im/vue-ui/app";
-import type { ConversationFilter } from "@flare-im/vue-ui/composables";
+import type { ConversationFilter } from "@flare-im/vue-ui/composables/sdk";
 
 const router = useRouter();
 const workbenchUi = useFlareWorkbenchUi();
