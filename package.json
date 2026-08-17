@@ -12,14 +12,15 @@
     "preview": "vite preview --host 0.0.0.0",
     "preview:web": "vite preview --host 0.0.0.0",
     "verify:architecture": "node ../../packages/flare-core-typescript-sdk/scripts/verify-no-client-shadow-views.mjs",
-    "test": "node ../../packages/flare-core-typescript-sdk/scripts/verify-no-client-shadow-views.mjs && vitest run",
+    "check:sfc": "node ../../scripts/check-sfc.mjs",
+    "test": "npm run check:sfc && node ../../packages/flare-core-typescript-sdk/scripts/verify-no-client-shadow-views.mjs && vitest run",
     "test:e2e": "playwright test",
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
-    "@vicons/ionicons5": "^0.13.0",
     "@flare-im/sdk": "file:../../packages/flare-core-typescript-sdk",
-    "@flare-im/vue-ui": "file:../../../flare-im-design/vue-im-ui",
+    "@flare-im/vue-ui": "^1.0.9",
+    "@vicons/ionicons5": "^0.13.0",
     "markdown-it": "^14.2.0",
     "naive-ui": "^2.44.1",
     "protobufjs": "^8.6.5",

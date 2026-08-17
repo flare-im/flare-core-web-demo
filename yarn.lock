@@ -47,18 +47,24 @@
   resolved "https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.25.12.tgz"
   integrity sha512-N3zl+lxHCifgIlcMUP5016ESkeQjLj/959RxxNYIthIg+CQHInujFuXeWbWMgnTo4cp5XVHqFPmpyu9J65C1Yg==
 
-"@flare-im/sdk@file:../../packages/flare-core-typescript-sdk":
+"@flare-im/sdk@*", "@flare-im/sdk@file:../../packages/flare-core-typescript-sdk":
   version "1.0.6"
   resolved "file:../../packages/flare-core-typescript-sdk"
   dependencies:
     protobufjs "^8.6.5"
 
-"@flare-im/vue-ui@file:../../../flare-im-design/vue-im-ui":
-  version "1.0.6"
-  resolved "file:../../../flare-im-design/vue-im-ui"
+"@flare-im/tokens@^1.0.5":
+  version "1.0.5"
+  resolved "https://registry.npmjs.org/@flare-im/tokens/-/tokens-1.0.5.tgz"
+  integrity sha512-OHi8kvkqT/5f+V0+uZkdCal6a2G+MPs4foeWQoKX2m5uIDMgmJQWUCtmq4fZOIDu6t70fzqI8jqcPZTirqwVCQ==
+
+"@flare-im/vue-ui@^1.0.9":
+  version "1.0.9"
+  resolved "https://registry.npmjs.org/@flare-im/vue-ui/-/vue-ui-1.0.9.tgz"
+  integrity sha512-fP+6iQSmSBWjKQCjGV6gRqjKvHPiO+J5YbXFLej3gc5O7uKo8ySH1yBKVQbzZtkH6qXp0ZU8xatkM88nKPuQwg==
   dependencies:
     "@flare-im/tokens" "^1.0.5"
-    "@vicons/ionicons5" "^0.12.0"
+    "@types/markdown-it" "^14.1.2"
     lucide-vue-next "0.577.0"
     markdown-it "^14.2.0"
 
@@ -562,6 +568,11 @@ loupe@^3.1.0, loupe@^3.1.4:
   resolved "https://registry.npmjs.org/loupe/-/loupe-3.2.1.tgz"
   integrity sha512-CdzqowRJCeLU72bHvWqwRBBlLcMEtIvGrlvef74kMnV2AolS9Y8xUv1I0U/MNAWMhBlKIoyuEgoJ0t/bbwHbLQ==
 
+lucide-vue-next@0.577.0:
+  version "0.577.0"
+  resolved "https://registry.npmjs.org/lucide-vue-next/-/lucide-vue-next-0.577.0.tgz"
+  integrity sha512-py05bAfv9SHVJqscbiOnjcnLlEmOffA58a+7XhZuFxrs6txe1E8VoR1ngWGTYO+9aVKABAz8l3ee3PqiQN9QPA==
+
 magic-string@^0.30.17, magic-string@^0.30.21:
   version "0.30.21"
   resolved "https://registry.npmjs.org/magic-string/-/magic-string-0.30.21.tgz"
@@ -603,7 +614,7 @@ muggle-string@^0.4.1:
   resolved "https://registry.npmjs.org/muggle-string/-/muggle-string-0.4.1.tgz"
   integrity sha512-VNTrAak/KhO2i8dqqnqnAHOa3cYBwXEZe9h+D5h/1ZqFSTEFHdM65lR7RoIqq3tBBYavsOXV84NoHXZ0AkPyqQ==
 
-naive-ui@^2.44.1:
+naive-ui@^2.44.0, naive-ui@^2.44.1:
   version "2.44.1"
   resolved "https://registry.npmjs.org/naive-ui/-/naive-ui-2.44.1.tgz"
   integrity sha512-reo8Esw0p58liZwbUutC7meW24Xbn3EwNv91zReWKm2W4JPu+zfgJRn/F7aO0BFmvN+h2brA2M5lRvYqLq4kuA==
@@ -884,7 +895,7 @@ vscode-uri@^3.0.8:
   resolved "https://registry.npmjs.org/vscode-uri/-/vscode-uri-3.1.0.tgz"
   integrity sha512-/BpdSx+yCQGnCvecbyXdxHDkuk55/G3xwnC0GqY4gmQ3j+A+g8kzzgB4Nk/SINjqn6+waqw3EgbVF2QKExkRxQ==
 
-vue-router@^4.6.4:
+vue-router@^4.6.0, vue-router@^4.6.4:
   version "4.6.4"
   resolved "https://registry.npmjs.org/vue-router/-/vue-router-4.6.4.tgz"
   integrity sha512-Hz9q5sa33Yhduglwz6g9skT8OBPii+4bFn88w6J+J4MfEo4KRRpmiNG/hHHkdbRFlLBOqxN8y8gf2Fb0MTUgVg==
@@ -899,7 +910,7 @@ vue-tsc@^2.1.10:
     "@volar/typescript" "2.4.15"
     "@vue/language-core" "2.2.12"
 
-vue@^3.0.0, vue@^3.0.11, vue@^3.2.25, vue@^3.5.0, vue@^3.5.13, vue@3.5.35:
+vue@^3.0.0, vue@^3.0.11, vue@^3.2.25, vue@^3.5.0, vue@^3.5.13, vue@>=3.0.1, vue@3.5.35:
   version "3.5.35"
   resolved "https://registry.npmjs.org/vue/-/vue-3.5.35.tgz"
   integrity sha512-cx89fnr+0kVGHiNFG6y6s0bdjypJRFNZn6x3WPstNdQR1bi1mbB7h4v5IBGTsPJU3nK1+0Iqj3Zf+hZWMieR4Q==
