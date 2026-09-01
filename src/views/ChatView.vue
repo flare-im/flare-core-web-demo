@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+
 import {
   ArrowBackOutline,
   CallOutline,
@@ -34,6 +35,7 @@ import {
   proxiedMediaUrl,
   resolveLoneEmojiPackKey,
   withTimeout,
+  describeSdkError,
   type MessageMediaDownloadSource,
 } from "@flare-im/vue-ui/utils";
 import type { MessageMenuConfig } from "@flare-im/vue-ui/utils";
@@ -533,7 +535,7 @@ async function ensureMessageLocated(messageId: string): Promise<boolean> {
     try {
       await sdk.loadOlderMessages();
     } catch (error) {
-      const detail = error instanceof Error ? error.message : String(error);
+      const detail = describeSdkError(error);
       message.error(detail || "加载历史消息失败");
       return false;
     }
@@ -724,7 +726,7 @@ async function sendText(): Promise<void> {
     // 失败翻成 failed 由气泡呈现重发入口。这里只负责交出去，
     // 后续状态一律由 ack / 回执事件驱动。
     void withComposerSendDeadline(task).catch((error: unknown) => {
-      const detail = error instanceof Error ? error.message : String(error);
+      const detail = describeSdkError(error);
       message.error(detail || "发送失败");
       if (composerUserEditVersion === composerVersionAtSubmit && !composerText.value.trim()) {
         setComposerTextSilently(text);
@@ -738,7 +740,7 @@ async function sendText(): Promise<void> {
     await messageListRef.value?.scrollToBottom();
   } catch (error) {
     // 只剩**提交前**的同步失败
-    const detail = error instanceof Error ? error.message : String(error);
+    const detail = describeSdkError(error);
     message.error(detail || "发送失败");
     if (!composerText.value.trim()) {
       setComposerTextSilently(text);
@@ -753,7 +755,7 @@ async function reactMessage(id: string, emoji: string): Promise<void> {
   try {
     await operations.toggleReaction(id, emoji);
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
+    const detail = describeSdkError(error);
     message.error(detail || "表情回应失败");
   }
 }
@@ -768,7 +770,7 @@ async function recallMessage(id: string): Promise<void> {
     await sdk.recallMessageById(id);
     if (editingMessageId.value === id) cancelEditingMessage();
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
+    const detail = describeSdkError(error);
     message.error(detail || "撤回失败");
   }
 }
@@ -1013,7 +1015,7 @@ async function handleMediaAction(id: string, action: MediaDownloadAction): Promi
       await downloadMediaSource(source);
     }
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
+    const detail = describeSdkError(error);
     message.error(detail || "下载失败");
   }
 }
@@ -1333,7 +1335,7 @@ async function sendVoiceRecording(recording: VoiceRecordingPayload): Promise<voi
       durationMs: recording.durationMs,
       description: "语音消息",
     }))).catch((error: unknown) => {
-      const detail = error instanceof Error ? error.message : String(error);
+      const detail = describeSdkError(error);
       message.error(detail || "发送失败");
     });
     setComposerTextSilently("");
@@ -1342,7 +1344,7 @@ async function sendVoiceRecording(recording: VoiceRecordingPayload): Promise<voi
     await messageListRef.value?.scrollToBottom();
     message.success("语音已发送");
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
+    const detail = describeSdkError(error);
     message.error(detail || "语音发送失败");
   } finally {
     sending.value = false;
@@ -1394,7 +1396,7 @@ async function buildFromAction(op: string): Promise<void> {
   sending.value = true;
   try {
     void withComposerSendDeadline(sdk.buildFromComposerAction(op, composerText.value)).catch((error: unknown) => {
-      const detail = error instanceof Error ? error.message : String(error);
+      const detail = describeSdkError(error);
       message.error(detail || "发送失败");
     });
     setComposerTextSilently("");
@@ -1402,7 +1404,7 @@ async function buildFromAction(op: string): Promise<void> {
     composerPanel.value = null;
     await messageListRef.value?.scrollToBottom();
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
+    const detail = describeSdkError(error);
     message.error(detail || "发送失败");
   } finally {
     sending.value = false;
@@ -1418,7 +1420,7 @@ async function sendComposerPayload(
   sending.value = true;
   try {
     void withComposerSendDeadline(operations.sendComposerPayload(payload)).catch((error: unknown) => {
-      const detail = error instanceof Error ? error.message : String(error);
+      const detail = describeSdkError(error);
       message.error(detail || "发送失败");
     });
     composerActionOpen.value = false;
@@ -1427,9 +1429,12 @@ async function sendComposerPayload(
     clearComposerDraft();
     composerPanel.value = null;
     await messageListRef.value?.scrollToBottom();
-    message.success(`${payload.previewText} 已发送`);
+    // 这里不再弹「已发送」。发送是 fire-and-forget，提示会在请求真正完成前就出现；
+    // 一旦服务端校验不通过（例如名片头像不是合法链接），用户先看到「已发送」、
+    // 隔一会儿又看到报错，自相矛盾。消息气泡本身已经是即时反馈，成功无需再提示，
+    // 失败由上面的 .catch 负责。
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
+    const detail = describeSdkError(error);
     message.error(detail || "发送失败");
     if (options.rethrow) throw error;
   } finally {
@@ -1457,12 +1462,12 @@ async function resendMessage(clientMsgId: string): Promise<void> {
   sending.value = true;
   try {
     void withComposerSendDeadline(sdk.resendFailedMessage(clientMsgId)).catch((error: unknown) => {
-      const detail = error instanceof Error ? error.message : String(error);
+      const detail = describeSdkError(error);
       message.error(detail || "发送失败");
     });
     await messageListRef.value?.scrollToBottom();
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
+    const detail = describeSdkError(error);
     message.error(detail || "重发失败");
   } finally {
     sending.value = false;
@@ -1503,12 +1508,12 @@ async function sendStickerItem(sticker: ComposerStickerSendPick): Promise<void> 
       url: sticker.url,
       stickerFormat: "webp",
     })).catch((error: unknown) => {
-      const detail = error instanceof Error ? error.message : String(error);
+      const detail = describeSdkError(error);
       message.error(detail || "发送失败");
     });
     await messageListRef.value?.scrollToBottom();
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
+    const detail = describeSdkError(error);
     message.error(detail || "贴纸发送失败");
   }
 }
@@ -1588,7 +1593,7 @@ async function syncEmptyChat(): Promise<void> {
     await sdk.syncActiveConversation();
     await messageListRef.value?.scrollToBottom();
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
+    const detail = describeSdkError(error);
     message.error(detail || "同步失败");
   }
 }
@@ -1597,7 +1602,7 @@ async function loadOlderMessages(): Promise<void> {
   try {
     await sdk.loadOlderMessages();
   } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
+    const detail = describeSdkError(error);
     message.error(detail || "加载历史消息失败");
   }
 }
