@@ -16,7 +16,6 @@ import {
 import { NButton, NIcon, useMessage } from "naive-ui";
 import { onBeforeRouteLeave, useRouter } from "vue-router";
 import { MessageContentType, type Message, type MessageContent } from "@flare-im/sdk/web";
-import { uploadMediaInput } from "@flare-im/sdk/media";
 import {
   FlareChatHeader as ChatConversationHeader,
   FlareChatHeaderIdentity as ChatConversationHeaderIdentity,
@@ -714,17 +713,31 @@ async function sendText(): Promise<void> {
         task = sdk.sendText(text);
       }
     }
-    await withComposerSendDeadline(task);
+    // 不等 ack 再放行输入区。
+    //
+    // 原来这里 `await` 整个发送直到服务端 ack，而 `sending` 守卫
+    // （`if (sending.value) return;`）覆盖同一段时间。线上实测 ack 迟迟不回、
+    // 一直到 30s 超时，这期间用户的每一次点击都被**静默丢弃**：没有气泡、
+    // 没有提示、也没有进入核心，看起来就像发送键坏了。
+    //
+    // 发送本身已经是有状态的：核心在入队前就把消息以 sending 落库并发总线，
+    // 失败翻成 failed 由气泡呈现重发入口。这里只负责交出去，
+    // 后续状态一律由 ack / 回执事件驱动。
+    void withComposerSendDeadline(task).catch((error: unknown) => {
+      const detail = error instanceof Error ? error.message : String(error);
+      message.error(detail || "发送失败");
+      if (composerUserEditVersion === composerVersionAtSubmit && !composerText.value.trim()) {
+        setComposerTextSilently(text);
+        void flushComposerDraftNow(sdk.activeConversationId.value, text);
+      }
+    });
     editingMessageId.value = "";
     replyMessageId.value = "";
-    if (composerUserEditVersion === composerVersionAtSubmit && !composerText.value.trim()) {
-      setComposerTextSilently("");
-      clearComposerDraft();
-    }
     composerPanel.value = null;
     await nextTick();
     await messageListRef.value?.scrollToBottom();
   } catch (error) {
+    // 只剩**提交前**的同步失败
     const detail = error instanceof Error ? error.message : String(error);
     message.error(detail || "发送失败");
     if (!composerText.value.trim()) {
@@ -1136,6 +1149,29 @@ function handleMediaFileInputChange(event: Event): void {
   })));
 }
 
+/**
+ * 把 Blob/File 转成核心可识别的 `data:` 定位符。
+ *
+ * 核心的 send_with_media 把 `data:` / `blob:` / iOS `ph://` / 小程序临时路径
+ * 一律当作**待上传的本地媒体**：先以 uploading 状态落库并发总线（气泡立刻出现），
+ * 再上传并按字节回填进度，最后才发送。`https://` 则视为已就绪的远端资源，
+ * 核心不再上传——那是「应用自己上传后用资源地址发送」的口子。
+ *
+ * 所以应用不应自己调 media.upload_*：那样上传期间既没有气泡也没有进度。
+ */
+async function blobToCoreDataUrl(blob: Blob, fileName: string, mimeType: string): Promise<string> {
+  const raw = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error ?? new Error("file read failed"));
+    reader.readAsDataURL(blob);
+  });
+  const comma = raw.indexOf(",");
+  const body = comma >= 0 ? raw.slice(comma + 1) : raw;
+  const type = mimeType || blob.type || "application/octet-stream";
+  return `data:${type};name=${encodeURIComponent(fileName)};size=${blob.size};base64,${body}`;
+}
+
 async function fileToCoreDataUrl(file: File): Promise<string> {
   const raw = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -1187,46 +1223,23 @@ function uploadNumberValue(source: Record<string, unknown>, ...keys: string[]): 
   return 0;
 }
 
-function mediaSourceFromUpload(uploaded: unknown, fallback: Omit<ComposerMediaSource, "sourcePath">): ComposerMediaSource {
-  const record = normalizedUploadRecord(uploaded);
-  const mediaId = uploadStringValue(record, "fileId", "file_id", "mediaId", "media_id", "id", "uuid", "objectId", "object_id", "key");
-  if (!mediaId) throw new Error("媒体上传未返回 fileId");
-  const sourceUrl = uploadStringValue(record, "cdnUrl", "cdn_url", "mediaUrl", "media_url", "downloadUrl", "download_url", "accessUrl", "access_url", "tempUrl", "temp_url", "sourceUrl", "source_url", "url");
-  const mimeType = uploadStringValue(record, "mimeType", "mime_type", "contentType", "content_type", "type") || fallback.mimeType;
-  const fileSize = uploadNumberValue(record, "size", "fileSize", "file_size", "bytes", "sizeBytes", "size_bytes") || fallback.fileSize;
-  return {
-    sourcePath: mediaId,
-    ...(sourceUrl ? { sourceUrl } : {}),
-    fileName: uploadStringValue(record, "fileName", "file_name", "name") || fallback.fileName,
-    mimeType,
-    fileSize,
-  };
-}
-
 async function uploadAudioMediaItem(item: MediaComposerPreviewItem): Promise<ComposerMediaSource> {
   const fileName = item.name || item.file?.name || mediaNameFromPath(item.sourcePath ?? "") || `audio-${Date.now()}.webm`;
   const mimeType = item.mimeType || item.file?.type || "audio/webm";
   const fileSize = item.size ?? item.file?.size ?? 0;
-  const fallback = { fileName, mimeType, fileSize };
+  // 与图片/视频/文件一致：交出本地定位符，由核心负责上传与进度。
+  // 这里原来先自己传完再发，导致上传期间既没有气泡也没有进度。
   if (item.file) {
-    const uploaded = await uploadMediaInput(sdk.client.media, {
-      source: "file",
-      file: item.file,
-      kind: "audio",
+    return {
+      sourcePath: await blobToCoreDataUrl(item.file, fileName, mimeType),
       fileName,
       mimeType,
-    });
-    return mediaSourceFromUpload(uploaded, fallback);
+      fileSize,
+    };
   }
   if (item.sourcePath) {
-    const uploaded = await uploadMediaInput(sdk.client.media, {
-      source: "path",
-      path: item.sourcePath,
-      kind: "audio",
-      fileName,
-      mimeType,
-    });
-    return mediaSourceFromUpload(uploaded, fallback);
+    // 已是本地路径（iOS ph:// / 小程序临时路径 / blob:），核心同样会识别并上传
+    return { sourcePath: item.sourcePath, fileName, mimeType, fileSize };
   }
   throw new Error("missing selected audio file");
 }
@@ -1301,15 +1314,15 @@ async function sendVoiceRecording(recording: VoiceRecordingPayload): Promise<voi
     const mimeType = recording.mimeType || "audio/mp4";
     const fileName = recording.fileName || `voice-${Date.now()}.m4a`;
     const size = recording.blob.size;
-    const uploaded = await uploadMediaInput(sdk.client.media, {
-      source: "bytes",
-      bytes: await recording.blob.arrayBuffer(),
-      kind: "audio",
+    // 交给核心上传：录完立刻出气泡并显示上传进度
+    const source = {
+      sourcePath: await blobToCoreDataUrl(recording.blob, fileName, mimeType),
+      sourceUrl: "",
       fileName,
       mimeType,
-    });
-    const source = mediaSourceFromUpload(uploaded, { fileName, mimeType, fileSize: size });
-    await withComposerSendDeadline(operations.sendComposerPayload(action.buildRequest({
+      fileSize: size,
+    };
+    void withComposerSendDeadline(operations.sendComposerPayload(action.buildRequest({
       audioId: source.sourcePath,
       sourcePath: source.sourcePath,
       sourceUrl: source.sourceUrl ?? "",
@@ -1319,7 +1332,10 @@ async function sendVoiceRecording(recording: VoiceRecordingPayload): Promise<voi
       fileSize: source.fileSize || size,
       durationMs: recording.durationMs,
       description: "语音消息",
-    })));
+    }))).catch((error: unknown) => {
+      const detail = error instanceof Error ? error.message : String(error);
+      message.error(detail || "发送失败");
+    });
     setComposerTextSilently("");
     clearComposerDraft();
     composerPanel.value = null;
@@ -1377,7 +1393,10 @@ async function buildFromAction(op: string): Promise<void> {
   prepareComposerSend();
   sending.value = true;
   try {
-    await withComposerSendDeadline(sdk.buildFromComposerAction(op, composerText.value));
+    void withComposerSendDeadline(sdk.buildFromComposerAction(op, composerText.value)).catch((error: unknown) => {
+      const detail = error instanceof Error ? error.message : String(error);
+      message.error(detail || "发送失败");
+    });
     setComposerTextSilently("");
     clearComposerDraft();
     composerPanel.value = null;
@@ -1398,7 +1417,10 @@ async function sendComposerPayload(
   prepareComposerSend();
   sending.value = true;
   try {
-    await withComposerSendDeadline(operations.sendComposerPayload(payload));
+    void withComposerSendDeadline(operations.sendComposerPayload(payload)).catch((error: unknown) => {
+      const detail = error instanceof Error ? error.message : String(error);
+      message.error(detail || "发送失败");
+    });
     composerActionOpen.value = false;
     activeComposerOp.value = "";
     setComposerTextSilently("");
@@ -1434,7 +1456,10 @@ async function resendMessage(clientMsgId: string): Promise<void> {
   if (!clientMsgId || sending.value) return;
   sending.value = true;
   try {
-    await withComposerSendDeadline(sdk.resendFailedMessage(clientMsgId));
+    void withComposerSendDeadline(sdk.resendFailedMessage(clientMsgId)).catch((error: unknown) => {
+      const detail = error instanceof Error ? error.message : String(error);
+      message.error(detail || "发送失败");
+    });
     await messageListRef.value?.scrollToBottom();
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
@@ -1472,12 +1497,15 @@ async function sendStickerItem(sticker: ComposerStickerSendPick): Promise<void> 
     return;
   }
   try {
-    await withComposerSendDeadline(sdk.sendSticker({
+    void withComposerSendDeadline(sdk.sendSticker({
       stickerId: sticker.stickerId,
       packageId: sticker.packageId,
       url: sticker.url,
       stickerFormat: "webp",
-    }));
+    })).catch((error: unknown) => {
+      const detail = error instanceof Error ? error.message : String(error);
+      message.error(detail || "发送失败");
+    });
     await messageListRef.value?.scrollToBottom();
   } catch (error) {
     const detail = error instanceof Error ? error.message : String(error);
