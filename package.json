@@ -13,7 +13,7 @@
     "preview:web": "vite preview --host 0.0.0.0",
     "verify:architecture": "node ../../packages/flare-core-typescript-sdk/scripts/verify-no-client-shadow-views.mjs",
     "check:sfc": "node ../../scripts/check-sfc.mjs",
-    "test": "npm run check:sfc && node ../../packages/flare-core-typescript-sdk/scripts/verify-no-client-shadow-views.mjs && vitest run",
+    "test": "node ../../scripts/check-wire-encoder-consistency.mjs && npm run check:sfc && node ../../packages/flare-core-typescript-sdk/scripts/verify-no-client-shadow-views.mjs && vitest run",
     "test:e2e": "playwright test",
     "typecheck": "vue-tsc --noEmit"
   },
