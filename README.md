@@ -15,9 +15,12 @@ Peer reference: `examples/flare-core-flutter-app` (interaction parity), `docs/cl
 ## Run (real server)
 
 1. Start IM gateway (default `ws://127.0.0.1:60051/ws`, `http://127.0.0.1:50050`).
-   Configure the browser app in `.env`. `VITE_FLARE_TOKEN_SECRET` must match
-   the running gateway's local dev secret (`flare-im-core/logs/.dev-token-secret`)
-   so WASM `sdk.generate_core_token` creates a token the server accepts.
+   The browser never holds a signing secret. With only a user id, the SDK
+   issues the access token from the API gateway (`{httpUrl}/api/v1/auth/tokens`)
+   and refreshes it before expiry — start the gateway with
+   `FLARE_API_GATEWAY_AUTH_DEV_ISSUE=true` for local development. Alternatively
+   paste a backend-issued token in the login page's advanced section
+   (see `flare-im-core/docs/AUTH-TOKEN-ISSUANCE.md`).
 2. Build the WASM package used by the browser production bridge:
 
 ```bash
