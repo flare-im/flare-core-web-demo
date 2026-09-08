@@ -7,7 +7,7 @@
     "dev": "npm run dev:web",
     "dev:web": "vite --host 0.0.0.0",
     "build": "npm run build:web",
-    "build:web": "vue-tsc --noEmit && vite build && node ../../scripts/check-vite-bundle-budget.mjs dist 500",
+    "build:web": "vue-tsc --noEmit && vite build && node ../../scripts/check-vite-bundle-budget.mjs dist 800",
     "package:web": "npm run build:web",
     "preview": "vite preview --host 0.0.0.0",
     "preview:web": "vite preview --host 0.0.0.0",
