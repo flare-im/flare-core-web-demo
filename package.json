@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@flare-im/sdk": "file:../../packages/flare-core-typescript-sdk",
-    "@flare-im/vue-ui": "^1.0.9",
+    "@flare-im/vue-ui": "^1.0.14",
     "@vicons/ionicons5": "^0.13.0",
     "markdown-it": "^14.2.0",
     "naive-ui": "^2.44.1",
