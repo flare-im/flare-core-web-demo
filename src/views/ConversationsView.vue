@@ -4,7 +4,7 @@ import { AddOutline, ChatbubbleEllipsesOutline, CloseOutline, EllipsisHorizontal
 import { NButton, NIcon, NInput } from "naive-ui";
 import { useRouter } from "vue-router";
 import type { FlareConversationAction } from "@flare-im/vue-ui/contracts";
-import { FlareFilterTabs, FlareStatusBanner } from "@flare-im/vue-ui/components";
+import { FlareEmptyState, FlareFilterTabs, FlareStatusBanner } from "@flare-im/vue-ui/components";
 import { useFlareWorkbenchUi } from "@flare-im/vue-ui/composables";
 
 type FlareBannerTone = "info" | "success" | "warning" | "danger" | "neutral";
@@ -144,20 +144,22 @@ async function runConversationAction(action: FlareConversationAction, id: string
         class="flutter-empty conversation-loading"
         role="status"
       >
-        <span class="chat-empty__spinner" aria-hidden="true" />
-        <strong>{{ t("connection.syncConversations") }}</strong>
-        <span>{{ t("connection.syncDetail") }}</span>
+        <FlareEmptyState
+          loading
+          :title="t('connection.syncConversations')"
+          :description="t('connection.syncDetail')"
+        />
       </section>
 
       <section v-else-if="!visibleConversations.pinned.length && !visibleConversations.rest.length" class="flutter-empty">
-        <n-icon :component="ChatbubbleEllipsesOutline" :size="56" />
-        <strong>{{ conversationSearchQuery ? t("conversation.emptySearchTitle") : t("conversation.emptyTitle") }}</strong>
-        <span>{{ conversationSearchQuery ? t("conversation.emptySearchHint") : t("conversation.emptyHint") }}</span>
-        <div v-if="!conversationSearchQuery" class="conversation-empty-actions">
-          <n-button type="primary" round @click="workbenchUi.openStartChat()">
-            {{ t("conversation.startChat") }}
-          </n-button>
-        </div>
+        <FlareEmptyState
+          :title="conversationSearchQuery ? t('conversation.emptySearchTitle') : t('conversation.emptyTitle')"
+          :description="conversationSearchQuery ? t('conversation.emptySearchHint') : t('conversation.emptyHint')"
+          :action-text="conversationSearchQuery ? undefined : t('conversation.startChat')"
+          @action="workbenchUi.openStartChat()"
+        >
+          <template #icon><n-icon :component="ChatbubbleEllipsesOutline" :size="56" /></template>
+        </FlareEmptyState>
       </section>
 
       <template v-else>

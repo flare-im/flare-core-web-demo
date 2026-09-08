@@ -22,6 +22,7 @@ import {
   FlareChatHeaderIdentity as ChatConversationHeaderIdentity,
   FlareComposer as EnhancedComposer,
   FlareComposerEmojiStickerPanel as ComposerEmojiStickerPanel,
+  FlareEmptyState,
   FlareMessageList as MessageList,
   FlarePinnedMessageBar as PinnedMessageBar,
   FlareStatusBanner,
@@ -34,7 +35,6 @@ import {
   markdownToPlainText,
   proxiedMediaUrl,
   resolveLoneEmojiPackKey,
-  withTimeout,
   describeSdkError,
   type MessageMediaDownloadSource,
 } from "@flare-im/vue-ui/utils";
@@ -92,7 +92,6 @@ type ComposerMentionCandidate = {
   label?: string;
   avatarUrl?: string;
 };
-const COMPOSER_SEND_TIMEOUT_MS = 35_000;
 const DRAFT_IDLE_DELAY_MS = 5_000;
 const DRAFT_CLEAR_DELAY_MS = 1_200;
 const PEER_PRESENCE_REFRESH_DELAY_MS = 5_000;
@@ -641,18 +640,13 @@ function prepareComposerSend(): void {
   if (conversationId) cancelPendingDraftClear(conversationId);
 }
 
-function composerSendTimeoutError(): Error {
-  const error = new Error("发送超时，请检查网络后重试");
-  (error as Error & { code?: string; operation?: string; details?: Record<string, string> }).code = "timeout";
-  (error as Error & { code?: string; operation?: string; details?: Record<string, string> }).operation = "composer.send";
-  (error as Error & { code?: string; operation?: string; details?: Record<string, string> }).details = {
-    timeoutMs: String(COMPOSER_SEND_TIMEOUT_MS),
-  };
-  return error;
-}
-
 async function withComposerSendDeadline<T>(task: Promise<T>): Promise<T> {
-  return await withTimeout(task, COMPOSER_SEND_TIMEOUT_MS, composerSendTimeoutError);
+  // 发送生命周期归核心（reliable_queue：乐观入队 + 10s×3 重试 + 落库对账 + 终态事件）。
+  // 应用层不再叠加过短失败死线：巨型会话历史回填 / 弱网 / WASM 单槽争用下，底层 invoke
+  // 可能慢于 35s，但消息其实已进核心可靠管线；旧的 35s 死线会误报「发送超时，请检查网络
+  // 后重试」——连「刚收到消息、长时间没再发」也会被残留的慢 task 触发。改透传：真实失败
+  // 仍由核心终态事件（SendFailed → 气泡标红 + 重试）与同步 reject 呈现，与 kit 已做的一致。
+  return await task;
 }
 
 function titleFromRichMarkdown(markdown: string): string {
@@ -1734,24 +1728,19 @@ async function focusPinnedMessage(messageId: string): Promise<void> {
         @focus="focusPinnedMessage"
       />
       <template v-else>
-        <section
+        <FlareEmptyState
           v-if="!sdk.messages.value.length"
           class="flutter-empty chat-empty"
-          :class="{
-            'chat-empty--error': chatEmptyState.error,
-            'chat-empty--loading': chatEmptyState.loading,
-            'chat-empty--clickable': !chatEmptyState.loading,
-          }"
-          :role="chatEmptyState.loading ? 'status' : 'button'"
-          :tabindex="chatEmptyState.loading ? undefined : 0"
-          @click="!chatEmptyState.loading ? syncEmptyChat() : undefined"
-          @keydown.enter="!chatEmptyState.loading ? syncEmptyChat() : undefined"
+          :tone="chatEmptyState.error ? 'error' : 'normal'"
+          :loading="chatEmptyState.loading"
+          :title="chatEmptyState.title"
+          :description="chatEmptyState.detail"
+          v-on="chatEmptyState.loading ? {} : { tap: syncEmptyChat }"
         >
-          <span v-if="chatEmptyState.loading" class="chat-empty__spinner" aria-hidden="true" />
-          <n-icon v-else :component="ChatbubbleEllipsesOutline" :size="56" />
-          <strong>{{ chatEmptyState.title }}</strong>
-          <span>{{ chatEmptyState.detail }}</span>
-        </section>
+          <template #icon>
+            <n-icon :component="ChatbubbleEllipsesOutline" :size="56" />
+          </template>
+        </FlareEmptyState>
         <MessageList
           v-else
           ref="messageListRef"
