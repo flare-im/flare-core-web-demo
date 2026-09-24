@@ -1,113 +1,86 @@
-# flare-core-web-app
+# Flare Core Web Reference App
 
-Vue 3 + TypeScript + Naive UI production-shaped workbench for `@flare-im/sdk` and **real** `flare-im-core-sdk` through browser WASM (`bindings/wasm` + `IMClient`).
+## What This Demonstrates
 
-Peer reference: `examples/flare-core-flutter-app` (interaction parity), `docs/client-api-reference.md`, `sdk-spec/shared/message_build_catalog.json`.
+The functional reference for real browser IM: Vue 3, Vue Router, TypeScript,
+Vite and the Web/WASM SDK. This is an official Flare design consumer undergoing
+canonical UI migration, not a claim that every screen is already migrated.
 
-## Stack
+## Architecture
 
-- Vue 3 Composition API, Vue Router (hash), Vite, Naive UI
-- **Shared UI**: `packages/@flare-im/vue-ui`
-- SDK entry: `createProductionAppClient` + `WebFlareImClient`
-- Runtime: `platform=web`, `runtime=browser-wasm`
-- Browser bridge: `WebProductionBridge` → `flare-im-core-sdk/bindings/wasm` with IndexedDB-backed SDK storage host
+`src/App.vue` mounts `../shared/vue-reference/ReferenceApp.vue`. Web and Tauri
+share routing, SDK-to-UI adapters and workbench composition under
+`examples/shared/vue-reference/workbench`. Reusable presentation belongs in
+`flare-im-design`; moving code into shared composition does not exempt it from
+ownership checks. No Web-specific screen implementation is imported by Tauri.
 
-## Run (real server)
+## flare-im-design Package Used
 
-1. Start IM gateway (default `ws://127.0.0.1:60051/ws`, `http://127.0.0.1:50050`).
-   The browser never holds a signing secret. With only a user id, the SDK
-   issues the access token from the API gateway (`{httpUrl}/api/v1/auth/tokens`)
-   and refreshes it before expiry — start the gateway with
-   `FLARE_API_GATEWAY_AUTH_DEV_ISSUE=true` for local development. Alternatively
-   paste a backend-issued token in the login page's advanced section
-   (see `flare-im-core/docs/AUTH-TOKEN-ISSUANCE.md`).
-2. Build the WASM package used by the browser production bridge:
+Public `@flare-im/vue-ui` entries and `@flare-im/tokens` at `2.0.0-rc.1`, via
+relative workspace dependencies. Vite resolves local kit sources for dev/HMR.
+The workbench uses public Shell, ChatWorkspace, ConversationHeader, MessageList,
+Composer, preview, form, forward picker, settings and status components.
+
+## SDK Adapter
+
+`src/integration/referenceRuntime.ts` supplies the Web client factory through
+`WebProductionBridge`. Shared `bootstrap.ts` registers it before mounting;
+`workbench/app/sdk/flareSdkContext.ts` and `useFlareCoreClient.ts` own SDK state,
+subscriptions and commands. The kit receives presentation contracts and intents.
+
+## Run
 
 ```bash
-cd flare-im-core-sdk
-cargo xtask build wasm
-```
-
-3. Launch the browser workbench:
-
-```bash
-cd flare-im-core-client-sdk/examples/flare-core-web-app
 npm install
-npm run dev
-```
-
-Default Vite URL: `http://localhost:1430`
-
-## Canonical layers (`examples/STRUCTURE.md`)
-
-| Layer | Path |
-|-------|------|
-| host app | `src/main.ts`, `src/App.vue`, `src/router.ts`, and `src/views/*` own mounting, route views, guards, and media proxy config |
-| shared UI | `@flare-im/vue-ui/src/app/components/*` for reusable workbench components, SDK context helpers, and runtime adapter hooks |
-| design system | `@flare-im/vue-ui/src/design-system/*` for foundations, provider, theme, generated tokens |
-| shared contracts | `@flare-im/vue-ui/src/shared/*` for contracts, i18n, config, constants |
-
-Workbench components use `useFlareCoreClient`; host route views should compose those components instead of duplicating init/login/sync orchestration.
-
-## Build / checks
-
-```bash
 npm run dev:web
 npm run typecheck
-npm run build:web
-npm run package:web
-npm run test
+npm test -- --maxWorkers=1
+npm run test:e2e
+npm run build
 ```
 
-`npm run build` and `npm run dev` are aliases for the web targets above.
+Default URL: `http://127.0.0.1:1430`. WASM bindings must be available at the SDK
+path configured by the Vite helper; dev/build serves a matched JS/WASM pair.
+For bounded unit-test execution use `npx vitest run --maxWorkers=1 --no-file-parallelism`.
 
-## Dev media proxy (`.env.development`)
+## Demo Mode
 
-| Path | Target | Purpose |
-|------|--------|---------|
-| `/__flare-media-api` | `http://127.0.0.1:50050` | Gateway media API |
-| `/__flare-storage` | `http://127.0.0.1:29000` | RustFS presigned PUT/GET |
+The runnable app uses the real SDK. There is no automatic fake-data fallback.
+Unit/widget fixtures are test inputs, not a supported product demo mode. Shared
+scenario-driven offline data and complete five-platform feature parity remain
+tracked in [the migration report](../CANONICAL_UI_MIGRATION_REPORT.md).
 
-Login **Media HTTP URL** defaults to `VITE_FLARE_HTTP_URL`.
+## Real SDK Mode
 
-## Routes
+Enter a test user ID and the WebSocket and HTTP gateway endpoints on the login
+screen. Credentials are issued by the configured gateway; do not put signing
+keys in UI code. Use isolated test accounts for destructive or send workflows.
 
-| Hash route | Screen |
-|------------|--------|
-| `#/login` | local `LoginView` wrapping `FlareLoginScreen` |
-| `#/conversations` | local `ConversationsView` + `ChatPlaceholderView` |
-| `#/chat` | local `ConversationsView` + `ChatView` |
-| `#/sdk-lab` | local `SdkLabView` wrapping lazy SDK Lab component |
+## Supported Features
 
-Router guard + `provideFlareSdk()` enforce auth gate.
+Conversation/message flows are the Core scope: session initialization, list,
+opening a conversation, timeline, composer, send/retry, message actions, search,
+media and SDK diagnostics. Integration and canonical-renderer coverage differ by
+platform; see the [feature matrix and remaining gaps](../CANONICAL_UI_MIGRATION_REPORT.md).
+Contact-directory, group-directory and relationship navigation require a Social
+adapter. Group conversations are messaging targets, not group administration.
 
-## Feature coverage
+## Platform-Specific Integration
 
-| Area | Status |
-|------|--------|
-| Login/session lifecycle | Real via `WebFlareImClient.init/events.subscribeEvents/login`, event bridge for login_failed/token_expired/kicked_off/logged_out/reconnecting |
-| Conversations | list/query/paginated/archived filters, pin/mute/archive/read/draft/delete/clear history |
-| Chat | virtual MessageTimeline, EnhancedComposer, message actions, resend, typing, draft |
-| Message types | text/image/video/audio/file/location/card/sticker/emoji/quote/link/forward/thread/rich/system/notification + Task/Schedule/Vote/Announcement/MiniProgram via `BusinessDetailBlock` |
-| SDK Lab | message build catalog, dispatch, sync, presence, media, capability, events |
-| Diagnostics | SDK version, FFI contract, data root, WASM status, connection/session snapshot |
-| Theme | light/dark/system + compact/callDark/highContrast variants |
-| i18n | zh-CN / en-US shared keys (`src/shared/i18n/messages.ts`) |
+Browser IndexedDB, File/Blob upload, microphone permissions, clipboard, download
+and WASM loading stay in the host. For local-to-remote validation use the existing
+Vite API proxy when the server does not permit browser cross-origin requests:
 
-Browser mode does not provide local mock data. If WASM or the server is unavailable, login and SDK Lab operations surface typed SDK errors.
+```bash
+VITE_MEDIA_API_PROXY_TARGET=https://your-server/api npm run dev:web -- --port 1431
+```
 
-## Smoke path
+Set HTTP gateway to `http://127.0.0.1:1431/__flare-media-api`; WebSocket remains
+the real server's `wss://...` endpoint. Do not disable browser CORS protections.
 
-1. Build WASM pkg (see above)
-2. Start signaling access-gateway on `ws://127.0.0.1:60051`
-3. `npm run dev` → Login → Conversations → open chat → send text → `#/sdk-lab` diagnostics
-4. Toggle theme/language from workbench settings (when exposed) or localStorage keys `flare-web-theme-mode`, `flare-web-locale`
+## Migration Status
 
-## Runtime gaps (honest)
-
-- Some capability/call paths may return `capabilityUnavailable` until core plugin host is complete
-- Next boundary pass: replace the remaining route-name assumptions inside optional workbench components with a navigation adapter when a host needs different route names.
-
-## Legacy note
-
-Do not treat old `browserClient` IndexedDB adapter as the long-term Web contract. This example uses WASM loader + TypeScript SDK web adapter boundary.
+Web/Tauri now share the full real workbench, not the earlier simplified demo.
+Some account/search/menu composition and legacy kit workbench classes remain;
+canonical ownership is not yet complete. Run the three `reference-app-*` gates
+from the SDK root and consult the report before making completion claims.

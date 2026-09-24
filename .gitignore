@@ -31,3 +31,8 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+
+# Soak / cold-hot / reload run output (scripts stay, results do not)
+soak/*.out
+soak/*.jsonl
+soak/*-report.json
